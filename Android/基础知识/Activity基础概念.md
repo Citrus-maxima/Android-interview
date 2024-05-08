@@ -82,9 +82,114 @@ onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通
 
 # 2.Activity启动模式
 
-# 3.IntentFilter匹配规则
+- 标准模式（Standard）：默认启动模式，每次启动Activity都会创建一个新的Activity实例，并置于栈顶。
+
+- 栈顶复用模式（SingleTop）：如果要启动的Activity已经在栈顶，则不会重新创建Activity，而是复用栈顶的实例，同时该Activity的onNewIntent()方法会被调用。如果要启动的Activity不在栈顶，则会重新创建该Activity的实例，并置于栈顶。
+
+- 栈内复用模式（SingleTask）：如果要启动的Activity已经存在于它想要归属的栈中，那么将栈中位于该Activity上的所有Activity出栈，同时该Activity的onNewIntent()方法会被调用。如果要启动的Activity不存在于它想要归属的栈中，如果该栈存在，则创建该Activity的实例，如果该栈不存在，则首先要创建一个新栈，然后创建该Activity实例并压入到新栈中。
+
+- 单例模式（SingleInstance）：启动Activity时，首先要创建一个新栈，然后创建该Activity实例并压入新栈中，新栈中只会存在这一个Activity实例。一旦该模式的Activity实例已经存在于某个栈中，任何应用激活该Activity时都会重用该栈中的实例，以及进入到该应用中。即多个应用共享该栈中的该Activity实例。
+
+# 3.Intent类型
+
+- 显式：
+
+（1）构造方法传入Component：
+
+```java
+Intent intent = new Intent(this, SecondActivity.class);
+startActivity(intent);
+```
+
+（2）setComponent：
+
+```java
+ComponentName componentName = new ComponentName(this, SecondActivity.class);
+// 或者ComponentName componentName = new ComponentName(this, "com.example.app.SecondActivity");
+// 或者ComponentName componentName = new ComponentName(this.getPackageName(), "com.example.app.SecondActivity");
+ 
+Intent intent = new Intent();
+intent.setComponent(componentName);
+startActivity(intent);
+```
+
+（3）setClass/setClassName：
+
+```java
+Intent intent = new Intent();
+ 
+intent.setClass(this, SecondActivity.class);
+// 或者intent.setClassName(this, "com.example.app.SecondActivity");
+// 或者intent.setClassName(this.getPackageName(), "com.example.app.SecondActivity");
+    
+startActivity(intent);
+```
+
+显式Intent可以直接设置需要调用的Activity类，可以唯一确定一个Activity，意图特别明确，所以是显式的。在应用程序内部跳转界面常用这种方式。
+
+- 隐式：
+
+隐式，即不是像显式的那样直接指定需要调用的Activity，隐式不明确指定启动哪个Activity，而是设置Action、Data、Category，让系统来筛选出合适的Activity。筛选是根据所有的<intent-filter>来筛选。
+
+IntentFilter匹配规则:
+
+IntentFilter主要包括：action、category、data。只有Intent完全匹配三者，才能成功启动Activity。一个Activity可以拥有多个IntentFilter，一个Intent只要能匹配其中一个，就能成功启动Activity。
+
+（1）action匹配规则
+
+action根据name属性值进行匹配。Intent的action需要与name的值完全一样，才算匹配成功。一个IntentFilter可以有多个action, Intent的action只要和其中一个action匹配成功就可以。一个Intent如果没有指定action,那么匹配失败。
+
+（2）category匹配规则
+
+category根据name属性值进行匹配。Intent要么不携带category参数，直接默认匹配。要么携带的category每一个都必须在IntentFilter中的category能匹配到。
+Intent不携带category也能匹配成功是因为: 调用startActivity和startActivityForResult时，系统会默认为Intent添加<category android:name="android.intent.category.DEFAULT" />category。所以想要Activity能接受隐式调用，就必须给Activity指定<category android:name="android.intent.category.DEFAULT" />这个category。
+
+（3）data匹配规则
+
+data的匹配和action类似，也是只要Intent的data能匹配多个data中的一个就匹配成功。data由两部分组成：mimeType和URI。
 
 # 4.启动Activity的方式
+
+- 显式：
+
+```java
+// 1. 使用构造函数 传入Class对象
+Intent intent = new Intent(this, SecondActivity.class); 
+startActivity(intent);
+
+// 2. 使用 setClassName()传入包名+类名/包Context+类名
+Intent intent = new Intent(); 
+// 方式1：包名+类名
+// 参数1 = 包名称
+// 参数2 = 要启动的类的全限定名称 
+intent.setClassName("com.hc.hctest", "com.hc.hctest.SecondActivity"); 
+
+// 方式2：包Context+类名
+// 参数1 = 包Context，可直接传入Activity
+// 参数2 = 要启动的类的全限定名称 
+intent.setClassName(this, "com.hc.hctest.SecondActivity"); 
+
+startActivity(intent);
+
+// 3. 通过ComponentName（）传入 包名 & 类全名
+Intent intent = new Intent(); 
+// 参数1 = 包名称
+// 参数2 = 要启动的类的全限定名称 
+ComponentName cn = new ComponentName("com.hc.hctest", "com.hc.hctest.SecondActivity"); 
+intent.setComponent(cn); 
+startActivity(intent);
+```
+
+- 隐式：
+
+```java
+// 通过Category、Action设置
+Intent intent = new Intent(); 
+intent.addCategory(Intent.CATEGORY_DEFAULT); 
+intent.addCategory("com.hc.second"); 
+intent.setAction("com.hc.action"); 
+startActivity(intent);
+```
 
 # 5.Activity启动过程
 
