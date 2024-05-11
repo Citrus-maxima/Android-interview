@@ -74,4 +74,6 @@ android.intent.action.BOOT_COMPLETED：系统启动完成广播
 
 ## Q5：LocalBroadcastManager实现原理
 
+LocalBroadcastManager内部维护了mReceivers和mActions两个HashMap。mReceivers 是接收器和IntentFilter的对应表，主要作用是方便在unregisterReceiver(…)取消注册，同时作为对象锁限制注册接收器、发送广播、取消接收器注册等几个过程的并发访问。mActions以Action为key，注册这个Action的BroadcastReceiver链表为value。mActions的主要作用是方便在广播发送后快速得到可以接收它的BroadcastReceiver。在注册广播时，其实是在更新这两个Map。
 
+发送广播时，根据Action从mActions中取出ReceiverRecord列表，找出action匹配的广播，然后通过Handler发送消息，在Handler的handleMessage中，取出匹配的广播列表，依次回调onReceive方法。
