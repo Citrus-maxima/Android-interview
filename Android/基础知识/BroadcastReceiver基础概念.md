@@ -12,13 +12,15 @@
 
 - 普通广播
 
-  开发者自身定义intent的广播（最常用）。
+  开发者自身定义intent的广播（最常用）。通过SendBroadcast()方法发送。
 
 - 系统广播
 
   Android内置广播，涉及手机的基本操作（如开机、网络状态变化、拍照等）。
 
 - 有序广播
+
+  通过sendOrderedBroadcast(intent)发送。
 
   （1）广播接收者按顺序接收广播，按照Priority属性值从大到小排序，Priority属性相同者，动态注册的广播优先。
 
@@ -30,6 +32,8 @@
 
 - 粘性广播
 
+  通过sendStickyBroadcast()方法发送，需要android.Manifest.permission.BROADCAST_STICKT权限。
+
   粘性广播是指在广播发送之后，即使没有注册接收器，也可以在注册接收器后接收到该广播。也就是说，粘性广播可以在发送之后被缓存，并在注册接收器后立即发送给接收器。粘性广播一般用来确保重要的状态改变后的信息被持久保存，并且能随时广播给新的广播接收器，比如电源的改变。
 
   使用场景：
@@ -38,7 +42,7 @@
 
   （2）应用程序启动后，获取之前发送的广播消息。这对于需要在应用程序启动后恢复状态或数据的情况非常有用。
 
-- App应用内广播
+- 本地广播（App应用内广播）
 
   App应用内广播可理解为一种局部广播，广播的发送者和接收者都同属于一个App。相比于全局广播（普通广播），App应用内广播优势体现在：安全性高 & 效率高。
 
@@ -52,4 +56,22 @@
 
   使用方式2：使用封装好的LocalBroadcastManager类
 
-  
+## Q4：常见的系统广播
+
+android.intent.action.DATE_CHANGED：日期变化广播
+
+android.intent.action.BATTERY_CHANGED：电量变化广播
+
+android.intent.action.SCREEN_ON：屏幕亮起广播
+
+android.intent.action.SCREEN_OFF：屏幕关闭广播
+
+android.intent.action.PACKAGE_ADDED：应用安装广播
+
+android.intent.action.PACKAGE_REMOVED：应用卸载广播  
+
+android.intent.action.BOOT_COMPLETED：系统启动完成广播
+
+## Q5：LocalBroadcastManager实现原理
+
+
