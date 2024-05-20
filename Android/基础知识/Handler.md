@@ -1,0 +1,12 @@
+## Q1：介绍一下Handler机制
+
+首先，Android Handler机制是Android系统中用于线程间通信的一种机制。Handler可以与线程中的Looper和MessageQueue协同工作，实现消息的发送、处理和分发。
+
+Handler是一个核心类，它负责发送和处理消息。在Handler中，我们可以使用sendMessage()或post()方法发送消息或Runnable对象到消息队列中。这些消息或Runnable对象会被封装成Message对象，并在消息队列中等待被处理。当我们在一个线程中创建一个Handler对象时，系统会为该线程创建一个与之关联的Looper对象。Looper对象会不断地从与之关联的消息队列（MessageQueue）中取出消息，并将这些消息分发给对应的Handler进行处理。
+当Looper从消息队列中取出Message对象时，会调用Handler的handleMessage()方法进行处理。
+
+Handler机制的好处在于它提供了一种线程安全的通信方式。由于Handler、Looper和MessageQueue都是线程私有的，因此不会出现多个线程同时访问同一个消息队列的情况，从而避免了线程安全问题。
+
+此外，Handler机制还支持延迟处理和异步加载数据等功能。通过调用Handler的postDelayed()或sendMessageDelayed()方法，我们可以将消息或Runnable对象延迟一段时间后再发送到消息队列中。这在一些需要延迟执行的场景中非常有用。
+
+## Q2：
