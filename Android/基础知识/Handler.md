@@ -83,13 +83,19 @@ Message message = Message.obtain(handler, what, arg1, arg2, obj);
 
 需要注意的是，一个线程只能有一个Looper实例，如果在一个已经拥有Looper实例的线程中再次调用Looper.prepare()方法，将会抛出异常。同样地，如果在一个没有Looper实例的线程中尝试使用Handler发送或接收消息，也会抛出异常。因此，通过Looper类的设计和使用方式，Android 系统能够确保线程和Looper之间的一对一关系，并实现了线程之间的消息传递和处理机制。
 
-## Q7：MessageQueue是干嘛呢？用的什么数据结构来存储数据？
+## Q7：主线程为什么不用初始化Looper？
+
+主线程（UI线程）已经默认初始化了Looper，无需手动调用Looper.prepare()和Looper.loop()方法。
+
+这是因为Android系统在启动应用程序时，会自动为主线程创建一个Looper对象并启动Looper循环。主线程的ActivityThread类中包含了一个Looper对象，并且在Application类的attach()方法中会启动Looper循环。
+
+## Q8：MessageQueue是干嘛呢？用的什么数据结构来存储数据？
 
 MessageQueue的作用是管理消息队列，确保线程能够按照一定的规则和顺序处理接收到的消息。它对于实现安卓应用程序的异步通信和线程间通信至关重要。
 
 关于MessageQueue存储数据的数据结构，它通常使用单向链表来存储Message对象。这种数据结构使得消息能够按照它们被添加到队列中的顺序被处理和取出。每个Message对象在链表中都有一个next字段，用于指向链表中的下一个Message对象，从而形成一个有序的消息队列。同时，MessageQueue中的mMessages字段保存了链表的第一个元素，也就是队列中的第一个待处理消息。这种设计使得MessageQueue能够高效地管理大量消息，并支持多线程并发访问。
 
-## Q8：Handler是如何发送延迟消息的？
+## Q9：Handler是如何发送延迟消息的？
 
 在Android中，Handler通过其内部的MessageQueue（消息队列）来实现消息的延迟发送。具体实现方式如下：
 
@@ -101,7 +107,7 @@ MessageQueue的作用是管理消息队列，确保线程能够按照一定的�
 
 （4）当时间到达该消息的延迟结束时间时，MessageQueue就会将该消息取出并交给Handler进行处理。Handler会调用你在postDelayed()方法中传递的Runnable对象的run()方法，或者调用你在Message中设置的回调方法。
 
-## Q9：MessageQueue的消息怎么被取出来的？
+## Q10：MessageQueue的消息怎么被取出来的？
 
 在Android中，MessageQueue中的消息是通过Looper被取出来的。Looper是MessageQueue的“管家”，它负责从MessageQueue中取出消息并分发给对应的Handler进行处理。
 
@@ -115,29 +121,141 @@ MessageQueue的作用是管理消息队列，确保线程能够按照一定的�
 
 （4）消息处理后的操作：在消息被处理之后，Handler会调用Message.recycle()方法来回收Message对象，以便后续重用。这是为了减少内存分配和垃圾回收的开销，提高性能。
 
-## Q10：Looper的阻塞机制
+## Q11：Looper的阻塞机制
 
-Looper的阻塞机制主要依赖于其内部的MessageQueue和相关的系统调用。
+Looper的阻塞机制主要依赖于其内部的MessageQueue和Native层的epoll机制。
 
-MessageQueue的阻塞：当MessageQueue中没有消息时，Looper的loop()方法中的queue.next()调用会阻塞。这是因为queue.next()方法实际上是在等待下一个消息的到来。在没有消息的情况下，这个方法会进入阻塞状态，直到有新的消息被添加到MessageQueue中。
+当MessageQueue中没有消息时，Looper的loop()方法中的queue.next()调用会阻塞。这是因为queue.next()方法实际上是在等待下一个消息的到来。在没有消息的情况下，这个方法会进入阻塞状态，直到有新的消息被添加到MessageQueue中。
 
-Native层的阻塞：在Android中，Java层的MessageQueue实现依赖于Native层的Looper。Native层的Looper使用了epoll（或其他类似的系统调用，如Linux中的poll或select）机制来监听文件描述符的变化。 当没有消息时，epoll会阻塞，直到有文件描述符发生变化（即有新消息到来）或者超时。
+在Android中，Java层的MessageQueue实现依赖于Native层的Looper。Native层的Looper使用了epoll机制来监听文件描述符的变化。当没有消息时，epoll会阻塞，直到有文件描述符发生变化（即有新消息到来）或者超时。
 
-消息的到来：当其他线程通过Handler向MessageQueue发送消息时，这个消息会被添加到队列的尾部。此时，如果之前MessageQueue是阻塞的（即没有消息可处理），那么阻塞的queue.next()调用会被唤醒，并返回新到的消息供Looper处理。
-Looper的处理：Looper在获取到消息后，会调用Handler的dispatchMessage()方法。这个方法会根据消息的类型调用相应的处理方法（如handleMessage()）。处理完成后，Looper会继续循环，等待下一个消息的到来。
+当其他线程通过Handler向MessageQueue发送消息时，这个消息会被添加到队列的尾部。此时，如果之前MessageQueue是阻塞的（即没有消息可处理），那么阻塞的queue.next()调用会被唤醒，并返回新到的消息供Looper处理。
 
-总的来说，Looper的阻塞机制是通过MessageQueue和Native层的epoll机制共同实现的。当没有消息时，Looper会阻塞在queue.next()调用上；当有消息到来时，阻塞会被唤醒，Looper会取出消息并交给相应的Handler进行处理。这种机制保证了线程能够高效地处理消息队列中的消息，而不会浪费CPU资源在无意义的空转上。
+## Q12：说说pipe/epoll机制？
 
-## MessageQueue没有消息时候会怎样？阻塞之后怎么唤醒呢？说说pipe/epoll机制？
+这个阻塞状态是通过调用native层的pollOnce()方法实现的，它会监听一个pipe管道，等待数据到来。在Android中，这个pipe管道是由Looper在初始化时创建的，它包含一个读文件描述符（read fd）和一个写文件描述符（write fd）。当MessageQueue中没有消息时，pollOnce()方法会阻塞在read fd上，等待数据到来。一旦有数据写入到write fd中，pollOnce()方法就会被唤醒，并返回新的消息。至于唤醒过程，当其他线程向MessageQueue发送消息时，会调用enqueueMessage()方法。这个方法会将消息添加到MessageQueue的尾部，并唤醒阻塞在read fd上的线程。唤醒操作是通过向write fd中写入数据实现的，这样pollOnce()方法就能感知到数据的到来，并返回新的消息进行处理。
 
-## 如果想要在子线程中new Handler要做些什么准备?
+至于epoll机制，它是Linux内核中提供的一种IO多路复用机制，用于监控多个文件描述符的状态变化。在Android中，虽然底层使用了epoll机制来监听pipe管道的状态变化，但在Java层我们并不需要直接操作epoll。因为Android框架已经为我们封装好了这些底层细节，我们只需要通过Handler和Looper等组件来发送和处理消息即可。
+
+## Q13：如果想要在子线程中new Handler要做些什么准备?
+
+```java
+new Thread(new Runnable() {
+    @Override
+    public void run() {
+        Looper.prepare(); // 准备Looper
+        Handler handler = new Handler() {
+            @Override
+            public void handleMessage(Message msg) {
+                // 处理消息
+            }
+        };
+        // ... 其他代码，例如发送消息到Handler
+        Looper.loop(); // 启动Looper的消息循环
+    }
+}).start();
+```
+
+（1）Looper的准备：在Android中，每个线程都可以有自己的Looper，而Looper则负责管理该线程的MessageQueue。但是，子线程默认情况下是没有Looper的。因此，在子线程中创建Handler之前，需要先调用Looper.prepare()方法来为子线程创建一个Looper。
+
+（2）创建Handler：一旦子线程中的Looper被创建，就可以像在主线程中一样创建Handler了。
+
+（3）启动Looper的消息循环：在子线程中创建Handler后，还需要调用Looper.loop()方法来启动该线程的消息循环。这样，Handler才能接收到并处理来自MessageQueue的消息。
+
+（4）发送和处理消息：在子线程中通过Handler的sendMessage()或post()方法发送消息。当消息被发送到MessageQueue后，Looper会负责将其取出并分发给相应的Handler进行处理。在Handler的handleMessage()方法中，可以编写处理消息的逻辑。
+
+（5）注意线程安全：由于Handler与特定的线程和Looper相关联，因此在使用Handler时需要注意线程安全。不要在非创建它的线程中访问或操作Handler，否则可能会导致不可预期的行为或崩溃。
+
+（6）资源清理：不再需要Handler和Looper时，应确保正确清理相关资源。虽然Android系统会在线程结束时自动清理这些资源，但在某些情况下（如长时间运行的后台线程），手动清理可能是一个好习惯。
+
+## Q14：Message是怎么找到它所属的Handler然后进行分发的？
+
+当使用Handler的obtainMessage()时，Android会从线程池获取一个Message对象并设置其target字段为当前的Handler。这样，这个Message就和特定的Handler关联起来了。
+
+## Q15：post(Runnable)与sendMessage有什么区别？
+
+post(Runnable)和sendMessage(Message)用于不同的目的，它们之间有几个关键的区别：
+
+- post(Runnable)
+
+参数：这个方法接收一个实现了Runnable接口的实例。Runnable是一个只有一个run()方法的接口，这个方法没有参数也不返回任何值。
+
+用途：通常用于在消息队列中排队一个简单的任务，该任务将在与Handler关联的线程上异步执行。
+
+简便性：post(Runnable)对于简单的任务非常方便，因为你不需要创建和配置一个Message对象。
+
+- sendMessage(Message)
+
+参数：这个方法接收一个Message对象，返回一个布尔值，表示是否成功发送了消息。
+
+用途：用于发送一个包含数据的消息到消息队列，以便在与Handler关联的线程上异步处理。Message对象可以包含任意数量的额外信息，这些信息可以通过字段（如what, arg1, arg2, obj等）或者通过Bundle附加。
+
+复杂性：sendMessage(Message)相对于post(Runnable)来说更加复杂，因为它涉及到Message对象的创建和配置。但是，当你需要传递数据或更复杂的任务时，它是非常有用的。
+
+- 总结
+
+如果你只是想在另一个线程上执行一个简单的任务，而不需要传递任何数据，那么post(Runnable)是一个很好的选择。如果你需要在另一个线程上执行一个任务，并且需要传递一些数据或执行更复杂的逻辑，那么sendMessage(Message)是更好的选择。通过Message对象，你可以传递任意类型的数据，并使用Handler的handleMessage(Message)方法来处理这些消息和数据。
+
+## Q16：Handler如何保证MessageQueue并发访问安全的？
+
+Handler通过结合Looper和MessageQueue的机制，以及使用线程同步工具（如synchronized块或ReentrantLock等），来确保MessageQueue的并发访问安全。以下是确保并发访问安全的关键点：
+
+线程局部存储：Looper和MessageQueue是线程私有的，每个线程都有自己的实例。这意味着一个线程中的Handler只能访问其所在线程的MessageQueue，从而避免了多个线程同时访问同一个MessageQueue的情况。
+
+消息队列的单线程处理：Looper通过循环不断地从MessageQueue中取出消息，并分发给相应的Handler进行处理。这个循环是在一个单独的线程中运行的，因此确保了消息是按顺序被处理的，从而避免了并发访问的问题。
+
+同步机制：虽然MessageQueue本身是线程私有的，但在某些情况下（例如，在多线程环境中通过共享Handler发送消息），仍然需要额外的同步机制来确保线程安全。在这种情况下，Android SDK内部的实现通常使用synchronized块或其他同步机制来确保在添加、删除或检索消息时的线程安全。
+
+阻塞唤醒机制：Looper的loop()方法中的queue.next()是在锁的外面等待的，当队列中没有消息的时候，会先释放锁，再进行等待，直到被唤醒。这样就不会造成死锁问题了。
+
+## Q17：什么是异步消息？
+
+在Android中，线程之间的通信通常不是直接进行的，而是通过使用消息队列（MessageQueue）和循环器（Looper）来实现。当你使用Handler的sendMessage()或post()方法发送一个消息或Runnable对象时，这个消息或对象会被放入到与该Handler关联的MessageQueue中。Looper会不断地从MessageQueue中取出消息并分发给相应的Handler进行处理。由于这个过程是异步的，所以发送消息的代码（可能在一个工作线程中）不会等待消息被处理完成就继续执行。
+
+用途：异步消息在Android中非常常见，特别是在需要更新UI线程（也称为主线程）中的UI元素时。由于Android的UI更新必须在主线程中进行，因此其他线程通常通过发送异步消息到主线程的Handler来请求UI更新。
+
+## Q18：什么是同步屏障？
+
+同步屏障（Sync Barrier）是MessageQueue中的一种特殊机制，用于临时阻塞消息队列中的消息处理。当设置同步屏障时，它会阻止所有普通消息的处理，同时允许某些特定类型的消息（如带有回调的消息或Runnable对象）继续执行。
+
+设置：同步屏障可以通过MessageQueue.postSyncBarrier()方法来设置。这个方法发送一个特殊的消息（没有target的Message）到队列中，该消息被用作同步屏障。
+
+作用：同步屏障为Handler消息机制增加了一种简单的优先级机制。在同步屏障之后发送的异步消息（即，在调用postSyncBarrier()之后发送的消息）会被优先处理，而在此之前发送的同步消息则会被暂时阻塞。这允许开发者确保某些重要的或紧急的异步任务能够更快地得到执行。
+
+撤销：要撤销同步屏障并允许之前被阻塞的同步消息继续处理，可以调用MessageQueue.removeSyncBarrier()方法，并传入之前由postSyncBarrier()返回的token。
+
+总之，Handler的异步消息机制允许在不同线程之间发送和处理消息，而同步屏障则提供了一种控制消息处理顺序和优先级的手段。
+
+## Q19：什么是IdleHandler？
+
+IdleHandler是Handler机制提供的一种可以在Looper事件循环的过程中，当出现空闲的时候，允许我们执行任务的一种机制。IdleHandler被定义在MessageQueue中，它是一个接口，需要实现其queueIdle()方法。当MessageQueue中没有消息要处理或者要处理的消息都是延时任务的时候，IdleHandler就会得到执行。这种特性很重要，因为它可以帮助我们判断当前线程是否处于空闲状态，从而避免在UI绘制的时候进行耗时操作，影响UI绘制效率。
+
+在Android开发中，IdleHandler通常用于执行一些非紧急但需要在空闲时执行的任务，比如清理资源、进行后台数据同步等。通过合理地使用IdleHandler，我们可以提高应用程序的响应性和性能。
+
+## Q20：如何优化IdleHandler的性能？
+
+（1）确保任务的轻量级：IdleHandler主要用于执行轻量级的任务，因为它在主线程空闲时执行，不适合执行耗时的任务。如果任务过重，可能会阻塞主线程，影响应用的性能和用户体验。
+
+（2）避免频繁注册和注销：如果频繁地注册和注销IdleHandler，会增加系统的开销。因此，在可能的情况下，尽量减少注册和注销的次数。
+
+（3）合理设置任务的优先级：如果有多个任务注册了IdleHandler，系统会按照注册的顺序调用它们的queueIdle方法。因此，对于优先级较高的任务，可以优先注册，以确保它们能够更快地执行。
+
+（4）谨慎处理返回值：在queueIdle方法中，如果返回true，则表示在下次消息队列空闲时还会再次执行该任务；如果返回false，则表示只执行一次。根据任务的特性和需求，谨慎选择返回值，避免不必要的重复执行。
+
+## 什么是HandlerThread？
+
+HandlerThread是Android中用于启动具有Looper的新线程的方便类。具体来说，HandlerThread是一个启动好Looper的Thread对象，它继承自Thread类，但主要的作用是在一个单独的线程中建立了一个消息队列，并且拥有了自己的Looper。这使得我们可以在自己的线程中分发和处理消息，从而实现多线程操作以及异步通信和消息传递。
+HandlerThread的主要用途包括：
+实现多线程：HandlerThread可以在工作线程之后执行任务，特别是一些耗时任务，从而避免阻塞主线程（UI线程）。
+异步通信和消息传递：HandlerThread可以实现工作线程与主线程（UI线程）之间的通信。通过HandlerThread，我们可以将工作线程的执行结果传递给主线程，并在主线程中执行相关的UI操作，从而保证线程的安全以及UI主线程的流畅性。
+在使用HandlerThread时，我们通常需要先创建一个HandlerThread对象，并调用其start()方法来启动线程。然后，我们可以创建一个与HandlerThread关联的Handler对象，并通过该Handler对象向HandlerThread发送消息或执行Runnable任务。在HandlerThread的线程中，我们可以重写Looper的循环来接收和处理这些消息或任务。
+
+## Handler分发事件优先级，是否可拦截？拦截的优先级如何？
+
+## 主线程Looper何时运行？
+
+## Handler的Message可以分为哪三类？分别有什么标识？
+
+## 同一个Message对象能否重复send？
 
 ## Handler内存泄露
-
-## 如何监控handler中的消息？
-
-## 异步消息、同步屏障、IdleHandler
-
-## 异步消息在源码中的应用
-
-## 如何外部发送一个异步消息
