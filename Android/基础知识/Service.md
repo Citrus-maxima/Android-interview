@@ -26,10 +26,6 @@ bind的方式开启服务，绑定服务，调用者挂了，服务也会跟着�
 
 ![image](https://github.com/Citrus-maxima/Android-interview/assets/46516051/8ff64374-df5f-405b-a17e-dfae746a6b66)
 
-![image](https://github.com/Citrus-maxima/Android-interview/assets/46516051/4c15a878-ae18-45ef-85db-a4bd211bd142)
-
-![image](https://github.com/Citrus-maxima/Android-interview/assets/46516051/d9dc6f2e-f39e-47f2-87f5-1bf6d729b8ed)
-
 ## Q4：为什么bindService可以跟Activity生命周期联动？
 
 1、bindService方法执行时，LoadedApk会记录ServiceConnection信息。
