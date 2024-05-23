@@ -87,7 +87,7 @@ Message message = Message.obtain(handler, what, arg1, arg2, obj);
 
 主线程（UI线程）已经默认初始化了Looper，无需手动调用Looper.prepare()和Looper.loop()方法。
 
-这是因为Android系统在启动应用程序时，会自动为主线程创建一个Looper对象并启动Looper循环。主线程的ActivityThread类中包含了一个Looper对象，并且在Application类的attach()方法中会启动Looper循环。
+这是因为Android系统在启动应用程序时，会自动为主线程创建一个Looper对象并启动Looper循环。主线程的Looper是在ActivityThread类的main()方法中隐式地创建的。当应用程序启动时，ActivityThread的main()方法会被调用，这个方法会首先调用Looper.prepareMainLooper()方法来准备主线程的Looper，并且在Application类的attach()方法中会启动Looper循环。
 
 ## Q8：MessageQueue是干嘛呢？用的什么数据结构来存储数据？
 
@@ -97,15 +97,13 @@ MessageQueue的作用是管理消息队列，确保线程能够按照一定的�
 
 ## Q9：Handler是如何发送延迟消息的？
 
-在Android中，Handler通过其内部的MessageQueue（消息队列）来实现消息的延迟发送。具体实现方式如下：
+（1）调用Handler的postDelayed()方法或sendMessageDelayed()方法时，实际上是向MessageQueue中发送了一个带有延迟时间的Runnable对象或者Message对象。
 
-（1）当你调用Handler的postDelayed()方法时，你实际上是向MessageQueue中发送了一个带有延迟时间的Runnable对象或者Message对象。
-
-（2）MessageQueue会维护一个按照时间排序的消息列表。当你发送一个延迟消息时，MessageQueue会计算该消息的延迟结束时间（即当前时间加上延迟时间），并将该消息插入到列表中的合适位置。
+（2）MessageQueue会维护一个按照时间排序的消息列表。发送延迟消息时，MessageQueue会计算该消息的延迟结束时间（即当前时间加上延迟时间），并将该消息插入到列表中的合适位置。
 
 （3）MessageQueue会不断地从消息列表中取出消息进行处理。但是，在处理消息之前，它会先检查当前时间是否已经达到了该消息的延迟结束时间。如果还没有到达，那么MessageQueue就会继续等待，直到时间到达或者队列中有其他可处理的消息。
 
-（4）当时间到达该消息的延迟结束时间时，MessageQueue就会将该消息取出并交给Handler进行处理。Handler会调用你在postDelayed()方法中传递的Runnable对象的run()方法，或者调用你在Message中设置的回调方法。
+（4）当时间到达该消息的延迟结束时间时，MessageQueue就会将该消息取出并交给Handler进行处理。
 
 ## Q10：MessageQueue的消息怎么被取出来的？
 
@@ -133,7 +131,7 @@ Looper的阻塞机制主要依赖于其内部的MessageQueue和Native层的epoll
 
 ## Q12：说说pipe/epoll机制？
 
-这个阻塞状态是通过调用native层的pollOnce()方法实现的，它会监听一个pipe管道，等待数据到来。在Android中，这个pipe管道是由Looper在初始化时创建的，它包含一个读文件描述符（read fd）和一个写文件描述符（write fd）。当MessageQueue中没有消息时，pollOnce()方法会阻塞在read fd上，等待数据到来。一旦有数据写入到write fd中，pollOnce()方法就会被唤醒，并返回新的消息。至于唤醒过程，当其他线程向MessageQueue发送消息时，会调用enqueueMessage()方法。这个方法会将消息添加到MessageQueue的尾部，并唤醒阻塞在read fd上的线程。唤醒操作是通过向write fd中写入数据实现的，这样pollOnce()方法就能感知到数据的到来，并返回新的消息进行处理。
+queue.next()的阻塞状态是通过调用native层的pollOnce()方法实现的，它会监听一个pipe管道，等待数据到来。在Android中，这个pipe管道是由Looper在初始化时创建的，它包含一个读文件描述符（read fd）和一个写文件描述符（write fd）。当MessageQueue中没有消息时，pollOnce()方法会阻塞在read fd上，等待数据到来。一旦有数据写入到write fd中，pollOnce()方法就会被唤醒，并返回新的消息。至于唤醒过程，当其他线程向MessageQueue发送消息时，会调用enqueueMessage()方法。这个方法会将消息添加到MessageQueue的尾部，并唤醒阻塞在read fd上的线程。唤醒操作是通过向write fd中写入数据实现的，这样pollOnce()方法就能感知到数据的到来，并返回新的消息进行处理。
 
 至于epoll机制，它是Linux内核中提供的一种IO多路复用机制，用于监控多个文件描述符的状态变化。在Android中，虽然底层使用了epoll机制来监听pipe管道的状态变化，但在Java层我们并不需要直接操作epoll。因为Android框架已经为我们封装好了这些底层细节，我们只需要通过Handler和Looper等组件来发送和处理消息即可。
 
@@ -242,20 +240,92 @@ IdleHandler是Handler机制提供的一种可以在Looper事件循环的过程�
 
 （4）谨慎处理返回值：在queueIdle方法中，如果返回true，则表示在下次消息队列空闲时还会再次执行该任务；如果返回false，则表示只执行一次。根据任务的特性和需求，谨慎选择返回值，避免不必要的重复执行。
 
-## 什么是HandlerThread？
+## Q21：什么是HandlerThread？
 
-HandlerThread是Android中用于启动具有Looper的新线程的方便类。具体来说，HandlerThread是一个启动好Looper的Thread对象，它继承自Thread类，但主要的作用是在一个单独的线程中建立了一个消息队列，并且拥有了自己的Looper。这使得我们可以在自己的线程中分发和处理消息，从而实现多线程操作以及异步通信和消息传递。
-HandlerThread的主要用途包括：
-实现多线程：HandlerThread可以在工作线程之后执行任务，特别是一些耗时任务，从而避免阻塞主线程（UI线程）。
-异步通信和消息传递：HandlerThread可以实现工作线程与主线程（UI线程）之间的通信。通过HandlerThread，我们可以将工作线程的执行结果传递给主线程，并在主线程中执行相关的UI操作，从而保证线程的安全以及UI主线程的流畅性。
+本质是一个Thread，其内部有自己的内部Looper对象，可以进行looper循环。
+
+使用HanlderThread可以在工作线程中执行耗时操作，以及将执行结果传递给主线程，使主线程执行相应的ui操作。
+
 在使用HandlerThread时，我们通常需要先创建一个HandlerThread对象，并调用其start()方法来启动线程。然后，我们可以创建一个与HandlerThread关联的Handler对象，并通过该Handler对象向HandlerThread发送消息或执行Runnable任务。在HandlerThread的线程中，我们可以重写Looper的循环来接收和处理这些消息或任务。
 
-## Handler分发事件优先级，是否可拦截？拦截的优先级如何？
+## Q22：Handler分发事件优先级，是否可拦截？拦截的优先级如何？
 
-## 主线程Looper何时运行？
+Handler在分发事件时存在优先级的概念，并且这些事件是可以被拦截的。拦截的优先级主要依赖于Handler处理消息的方式和回调的时机。
 
-## Handler的Message可以分为哪三类？分别有什么标识？
+在Handler中，消息的拦截和处理主要通过以下步骤和优先级进行：
 
-## 同一个Message对象能否重复send？
+- Message的回调方法：message.callback.run() 的优先级最高。当一个Message对象拥有一个Runnable类型的callback时，这个消息被分发时，会首先执行这个callback的run方法。此时，如果在这个回调中处理了消息并且不希望它被继续传递，那么可以认为这个消息被“拦截”了。
 
-## Handler内存泄露
+- Handler的回调方法：Handler.mCallback.handleMessage(msg) 的优先级次之。当Handler被设置了一个Callback对象时，这个消息的回调方法会被调用。在这个回调方法中，可以根据需要处理消息，并且如果返回true，则消息不会被继续传递到Handler的handleMessage方法中，从而达到拦截的效果。
+
+- Handler的默认方法：Handler.handleMessage(msg) 的优先级最低。这是Handler自身的消息处理方法，如果没有设置Callback或者Callback的handleMessage方法返回false，那么消息最终会到达这里进行处理。
+
+关于拦截的优先级，简单来说就是：
+
+Message的callback具有最高的优先级，一旦执行了callback的run方法，消息就不会被继续传递。
+
+Handler的Callback具有次高的优先级，可以在Callback的handleMessage方法中处理消息并决定是否继续传递。
+
+如果以上两个地方都没有处理消息，那么最终会到达Handler自身的handleMessage方法进行处理。
+
+## Q23：Handler的Message可以分为哪三类？分别有什么标识？
+
+- 普通消息（同步消息）：这是Handler默认发送的消息类型。在发送消息时，如果不特别指定，那么发送的都是普通消息。这些消息按照它们在MessageQueue中的顺序（通常是按照时间顺序，通过msg.when来排序）被处理。
+
+- 异步消息：异步消息是在创建Handler时，如果传入的async参数为true，或者发送来的Message通过msg.setAsynchronous(true)方法被设置为异步的，那么这些消息就是异步消息。异步消息在普通情况下和同步消息没有区别，但是一旦在MessageQueue中设置了同步屏障（即插入了屏障消息），那么异步消息的处理就会有所不同。屏障消息会拦截队列中的同步消息，但是不会拦截异步消息，所以异步消息可以继续被执行。
+
+- 屏障消息（同步屏障）：屏障消息用于在MessageQueue中插入一个屏障，屏障之后的所有同步消息都会被阻挡，不能被处理，但是异步消息却不受影响，可以继续执行。屏障的作用就是为了确保异步消息的优先级，设置了屏障后，只能处理其后的异步消息，同步消息会被挡住，除非撤销屏障。
+
+## Q24：同一个Message对象能否重复send？
+
+同一个Message对象不能重复send。
+
+在Android的Handler机制中，Message对象被设计为一次性的，即当一个Message对象被发送（send）后，它就不能再被重新发送。这是因为Message在发送后，其内部状态会被Handler或Looper修改，例如它的when字段会被设置为发送的时间，或者它的target字段会被设置为接收它的Handler等。这些状态在Message被处理完成后通常不会被重置，因此同一个Message对象不能再次被发送。
+
+然而，为了提高性能和减少内存分配，Android的Handler机制支持Message的复用。当一个Message被处理完成后，它并不会立即被销毁，而是会被放回到一个消息池中，等待下一次被复用。这样，在下一次需要发送Message时，就可以从消息池中获取一个已经存在的Message对象，而不是重新创建一个新的对象。这种方式可以有效地减少内存分配和垃圾回收的开销，提高应用的性能。虽然Message可以被复用，但是每次复用前都需要确保Message的状态已经被正确地重置。这通常是通过调用Message的clear()或recycle()方法来实现的。这些方法会将Message的内部状态重置为初始值，以便它可以被安全地重新使用。
+
+## Q25：Handler内存泄露
+
+Handler内存泄露的原因通常与Handler如何持有和使用Context（如Activity）的引用有关。
+
+原因：
+
+（1）Handler持有Activity的引用：当Handler作为Activity的非静态内部类时，它会默认持有Activity的引用。如果Handler被声明为静态的或者在一个长生命周期的对象（如单例、静态变量、线程等）中持有，那么在Activity销毁后，由于Handler仍然持有Activity的引用，这将阻止Activity被垃圾回收器回收，从而导致内存泄露。
+
+（2）MessageQueue中的消息：当Activity销毁时，如果Handler中还有未处理的消息在MessageQueue中等待处理，这些消息会持有Handler的引用，进而持有Activity的引用，导致Activity无法被回收。
+
+解决方案：
+
+（1）使Handler成为静态的：通过将Handler声明为静态的，可以确保Handler的生命周期不依赖于Activity。但是，这样做需要手动管理对Activity的引用，避免潜在的空指针异常。
+
+（2）在Activity销毁时移除消息和回调：在Activity的onDestroy()方法中，确保移除所有与Handler相关的回调和消息。这可以通过调用Handler的removeCallbacks()和removeMessages()方法实现。
+
+（3）使用WeakReference：可以使用WeakReference来持有Activity的引用，这样当Activity不再需要时，它可以被垃圾回收器回收。但是，使用WeakReference需要谨慎处理，因为当引用变为null时，需要确保不会再次使用它。
+
+总之，为了避免Handler导致的内存泄露，需要仔细管理Handler和Activity之间的引用关系，并确保在适当的时机释放这些引用。
+
+## Q26：removeMessages为什么需要两次循环？
+
+第一次循环是先判断符合删除条件的Message是不是从消息队列的头部就开始有了，这时候会涉及修改mMessage指向的问题，而mMessage代表的就是整个消息队列。
+
+在排除了第一种情况之后，第二次循环不需要关心mMessage指向的问题，只要继续遍历队列删除剩余的符合删除条件的Message。
+
+## Q27：Handler的runWithScissors()可实现A线程阻塞等待B线程处理完消息后再继续执行的功能，它为什么被标记为hide？存在什么问题？原因是什么？
+
+Handler的runWithScissors()方法被标记为@hide，意味着它是Android框架内部使用的一个方法，并不打算直接暴露给普通的开发者使用。这个方法的设计目的是实现在一个线程（A线程）中通过Handler向另一个线程（B线程）发送一个任务，并阻塞等待B线程处理完该任务后再继续执行。
+
+存在的问题：
+
+线程阻塞：该方法实现了线程间的阻塞等待，这可能导致线程调度和性能问题。在Android中，线程阻塞通常是不被推荐的，因为它可能导致应用程序的响应性下降，甚至引发死锁等问题。
+
+同步问题：当使用runWithScissors()方法时，需要考虑多线程同步的问题。这通常涉及到使用锁（如synchronized）和等待/通知机制等复杂的同步机制，增加了代码的复杂性和出错的可能性。
+
+不可预测性：由于线程调度和执行的不可预测性，使用runWithScissors()方法可能会导致程序的行为变得难以预测和理解。这增加了调试和维护的难度。
+
+限制性和约束性：由于runWithScissors()方法是一个内部方法，它的使用可能受到Android框架的限制和约束。这意味着开发者可能无法完全控制其行为，也无法在需要时对其进行修改或扩展。
+
+综上所述，虽然runWithScissors()方法在某些情况下可能很有用，但由于其存在的潜在问题和隐患，Android工程师选择将其标记为@hide，以限制普通开发者的使用。如果开发者需要在Android中实现线程间的通信和同步，建议使用其他更可靠和可预测的方法，如使用Handler和Looper来发送和处理消息，或者使用并发工具类（如ExecutorService）来管理线程池和任务执行。
+
+## Q28：Handler可以IPC通信吗？
+
+不能，Handler只能用于共享内存地址的两个线程通信，即同进程的两个线程通信。
