@@ -24,11 +24,11 @@ AIDL（Android Interface Definition Language）是一种IDL语言，用于生成
 
 如果在一个进程中（例如Activity）要调用另一个进程中（例如Service）对象的操作，就可以使用AIDL生成可序列化的参数。AIDL是IPC的一个轻量级实现，Android也提供了一个工具，可以自动创建Stub。在应用间通信时，需要以下几步：
 
-（1）：定义一个AIDL接口；
+（1）定义一个AIDL接口；
 
-（2）：为远程服务（Service）实现对应Stub；
+（2）为远程服务（Service）实现对应Stub；
 
-（3）：将服务“暴露”给客户程序使用；
+（3）将服务“暴露”给客户程序使用；
 
 只有当允许来自不同的客户端访问服务并且需要处理多线程问题时才必须使用AIDL，其他情况下都可以选择其他方法。AIDL是处理多线程、多客户端并发访问的，而Messenger是单线程处理。
 
