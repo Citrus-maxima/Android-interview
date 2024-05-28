@@ -535,32 +535,26 @@ Binder驱动支持多线程处理，当服务端收到客户端的请求时，�
 
 客户端进程在尝试与崩溃的服务端进程通信时，会收到一个异常（如DeadObjectException），从而知道服务端进程已经不可用。客户端进程可以根据这个异常采取适当的恢复措施，如重试请求或通知用户。
 
+## Q25：不通过AIDL，手动编码来实现Binder的通信
 
+在Android系统中，直接手动编码来实现Binder通信而不使用AIDL（Android Interface Definition Language）通常涉及到底层的Binder机制，并且直接操作Binder的底层API。
 
-
-
-
-
-
-
-
-
-
-## 不通过AIDL，手动编码来实现Binder的通信
-
-在Android系统中，直接手动编码来实现Binder通信而不使用AIDL（Android Interface Definition Language）通常涉及到底层的Binder机制，这需要对Android系统内部机制有深入的了解，并且直接操作Binder的底层API。以下是一个简化的步骤，描述如何手动实现Binder通信：
 1. 定义Binder接口
-虽然不使用AIDL，但你仍然需要定义一个Binder接口。这个接口将包含你需要跨进程通信的方法。
-java
-复制
+
+虽然不使用AIDL，但仍然需要定义一个Binder接口。这个接口将包含需要跨进程通信的方法。
+
+```java
 public interface IMyBinder extends IBinder {
     // 定义你的方法
     void doSomething(Parcel data, ParcelFileDescriptor result);
 }
+```
+
 2. 实现Binder类
+
 你需要创建一个类来实现这个接口，并且继承自Binder类。
-java
-复制
+
+```java
 public class MyBinder extends Binder implements IMyBinder {
     @Override
     public void doSomething(Parcel data, ParcelFileDescriptor result) {
@@ -569,39 +563,59 @@ public class MyBinder extends Binder implements IMyBinder {
 
     // 可能还需要实现其他Binder生命周期方法，如onTransact()
 }
+```
+
 3. 在服务端注册Binder
+
 服务端进程需要将其实例化的Binder对象注册到ServiceManager中，以便客户端能够找到它。这通常涉及到JNI（Java Native Interface）调用，因为ServiceManager是一个本地服务。
+
 4. 客户端获取Binder引用
+
 客户端通过ServiceManager的API来获取Binder的引用。这同样涉及到JNI调用。
+
 5. 跨进程通信
+
 一旦客户端获取了Binder的引用，它就可以调用Binder接口中定义的方法来进行跨进程通信。这通常通过Parcel对象来传递数据。
+
 6. 处理Binder事务
+
 在Binder的底层实现中，所有的方法调用都被封装为事务（transaction）。当客户端调用Binder接口的方法时，它会发送一个事务请求到服务端。服务端处理完事务后，将结果返回给客户端。
+
 7. 错误处理和异常机制
+
 在通信过程中，需要处理各种可能的错误和异常，如服务端进程崩溃、网络问题等。这通常涉及到异常处理和重试机制。
-注意事项：
-直接操作Binder的底层API需要深入了解Android系统的内部机制，包括Binder机制、ServiceManager、JNI等。
-这种方式通常不推荐用于应用层开发，因为它涉及到系统底层的复杂性和风险。
-AIDL提供了一种更简洁、更易于使用的跨进程通信方式，它隐藏了底层的复杂性，并提供了更好的可维护性和可扩展性。
 
-## 介绍一下binder线程池
+## Q26：介绍一下binder线程池
 
-Binder线程池是Android系统中一个关键的组件，主要用于管理应用程序中的线程，确保进程间通信（IPC）的高效执行。
 一、概述
-Binder线程池通过创建和管理线程池，实现了任务的高效调度和执行。在Android系统中，多个进程之间需要进行信息交互和资源共享，Binder线程池扮演着重要角色，确保进程间通信的高效和安全。
+
+Binder线程池主要用于管理应用程序中的线程，通过创建和管理线程池，确保进程间通信（IPC）的高效执行。
+
 二、工作原理
-Binder线程池的工作原理可以概括为以下几个步骤：
+
 创建线程池：在应用程序启动时，Binder线程池被创建，并根据配置参数设置线程池的大小。线程池的大小通常根据设备的性能和应用程序的需求来确定。创建线程池后，会初始化一定数量的工作线程，这些线程处于等待状态，准备执行任务。
+
 提交任务：应用程序通过Binder机制将任务提交给线程池。任务可以是一个Runnable对象或一个Callable对象。线程池会将任务放入任务队列中，等待执行。
+
 调度任务：线程池会按照一定的调度策略从任务队列中选择任务，并将任务分配给空闲的工作线程执行。调度策略可以是先进先出、最早开始或优先级等。
+
 执行任务：工作线程从任务队列中获取任务，并执行任务的run方法或call方法。任务的执行可能涉及到CPU计算、IO操作或其他耗时操作。执行完任务后，工作线程会再次变为空闲状态，等待下一个任务的分配。
+
 完成任务：当任务执行完毕时，线程池会通知任务的提交者，任务的结果可以通过回调函数或Future对象获取。
+
 三、动态调整
+
 Binder线程池会动态调整线程池的大小，以适应应用程序的需求。当任务量增加时，线程池会增加工作线程的数量；当任务量减少时，线程池会减少工作线程的数量。这样可以提高线程池的利用率，避免资源的浪费。
+
 四、作用
+
 Binder线程池的主要作用包括：
+
 提供线程池：维护一个线程池，用于处理Binder请求，确保多个请求能够同时进行，提高系统的并发处理能力。
+
 处理Binder请求：当一个进程需要向另一个进程发送请求时，通过Binder线程池进行处理。线程池会将请求加入队列，并通过线程调度机制选择一个线程来处理请求。
+
 中转请求：Binder线程池还起到中转的作用，将进程间的Binder请求发送给Binder驱动程序进行处理，完成IPC的过程。
-综上所述，Binder线程池是Android系统中一个非常重要的组件，它通过高效的任务调度和执行，确保了进程间通信的高效和安全。
+
+## Binder线程个数
 
