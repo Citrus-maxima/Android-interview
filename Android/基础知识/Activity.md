@@ -1,4 +1,4 @@
-# 1.Activity生命周期
+## Q1. 请简述Activity的生命周期，并列出主要的回调方法。
 
 ![image](https://github.com/Citrus-maxima/Android-interview/assets/46516051/0a82a02c-e0d7-40d6-b0ec-fdb3389f7807)
 
@@ -60,7 +60,11 @@ onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通
 
 （6）接下来就与正常的一样了，调用onResume，然后运行。
 
-## Q7：onSaveInstanceState和onRestoreInstanceState调用时机
+## Q7：在Android开发中，你如何确保Activity在横竖屏切换时不重新创建？
+
+在AndroidManifest.xml文件中的Activity标签中指定android:configChanges属性。当声明了此属性后，系统不会再在横竖屏切换时销毁并重新创建Activity，而是会调用Activity的onConfigurationChanged()方法。
+
+## Q8：onSaveInstanceState和onRestoreInstanceState调用时机
 
 当某个activity变得可能会被系统销毁时，该activity的onSaveInstanceState就会被执行，除非该activity是被用户主动销毁的，例如当用户按BACK键的时候。有这么几种情况： 
 
@@ -80,7 +84,41 @@ onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通
 
 另外，onRestoreInstanceState的bundle参数也会传递到onCreate方法中，也可以选择在onCreate方法中做数据还原。
 
-# 2.Activity启动模式
+## Q9：以下场景中，Activity生命周期的调用
+
+1. Activity A中启动Activity B：
+
+   A: opPause() -> B: onCreate() -> B: onStart() -> B: onResume() -> A: onStop()
+
+2. home键：
+
+   onPause() -> onstop() -> onRestart() -> onStart() -> onResume()
+
+3. finish()：
+
+   onCreate()中执行：onCreate() -> onDestroy()
+
+   onStart()中执行：onCreate() -> onStart() -> onStop() -> onDestroy()
+
+   onResume()中执行：onCreate() -> onStart() —> onResume() -> onPause() -> onStop() -> onDestroy()
+
+4. 物理返回键onKeyDown()：
+
+   onPause() -> onStop() -> onDestroy()
+
+5. 息屏再打开：
+
+   onPause() -> onStop() -> onRestart() -> onStart() -> onResume()
+
+6. 启动一个在前台的启动模式为singleTop的Activity：
+
+   onPause() -> onNewIntent() -> onResume()
+
+7. 在当前Activity界面进入设置界面更改了一些已有的设置，或者Activity发生异常崩溃重建：
+
+   onPause() -> onStop() -> onDestroy() -> onCreate() -> onStart() -> onResume()
+
+## Q10：Activity启动模式
 
 - 标准模式（Standard）：默认启动模式，每次启动Activity都会创建一个新的Activity实例，并置于栈顶。
 
@@ -90,48 +128,87 @@ onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通
 
 - 单例模式（SingleInstance）：启动Activity时，首先要创建一个新栈，然后创建该Activity实例并压入新栈中，新栈中只会存在这一个Activity实例。一旦该模式的Activity实例已经存在于某个栈中，任何应用激活该Activity时都会重用该栈中的实例，以及进入到该应用中。即多个应用共享该栈中的该Activity实例。
 
-# 3.Intent类型
+## Q11：Activity各种启动模式的使用场景
 
-- 显式：
+- standard模式
 
-（1）构造方法传入Component：
+使用场景：这是默认的启动模式，当没有特殊要求时，Activity通常会使用此模式。
 
-```java
-Intent intent = new Intent(this, SecondActivity.class);
-startActivity(intent);
-```
+特点：每次启动一个Activity时，系统都会创建一个新的Activity实例，无论该Activity的实例是否已经存在。
 
-（2）setComponent：
+示例：当用户在应用程序中浏览一系列列表项，点击每个列表项都会打开一个新的详情页面时，这些详情页面Activity可以使用standard模式。
 
-```java
-ComponentName componentName = new ComponentName(this, SecondActivity.class);
-// 或者ComponentName componentName = new ComponentName(this, "com.example.app.SecondActivity");
-// 或者ComponentName componentName = new ComponentName(this.getPackageName(), "com.example.app.SecondActivity");
- 
-Intent intent = new Intent();
-intent.setComponent(componentName);
-startActivity(intent);
-```
+- singleTop模式
 
-（3）setClass/setClassName：
+使用场景：当希望避免在任务栈顶部重复创建相同Activity的实例时，可以使用此模式。
 
-```java
-Intent intent = new Intent();
- 
-intent.setClass(this, SecondActivity.class);
-// 或者intent.setClassName(this, "com.example.app.SecondActivity");
-// 或者intent.setClassName(this.getPackageName(), "com.example.app.SecondActivity");
-    
-startActivity(intent);
-```
+特点：如果新的Activity已经位于任务栈的栈顶，那么此Activity不会重新创建实例，而是复用栈顶的Activity实例，同时会调用它的onNewIntent()方法。
 
-显式Intent可以直接设置需要调用的Activity类，可以唯一确定一个Activity，意图特别明确，所以是显式的。在应用程序内部跳转界面常用这种方式。
+示例：假设有一个聊天应用，用户与不同联系人进行聊天，每次点击联系人都会打开相应的聊天界面（即ChatActivity）。如果ChatActivity已经在栈顶，并且用户再次点击同一个联系人，此时可以复用栈顶的ChatActivity实例，避免重复创建。
 
-- 隐式：
+- singleTask模式
 
-隐式，即不是像显式的那样直接指定需要调用的Activity，隐式不明确指定启动哪个Activity，而是设置Action、Data、Category，让系统来筛选出合适的Activity。筛选是根据所有的<intent-filter>来筛选。
+使用场景：当希望某个Activity作为任务的入口点，并且希望在整个任务中只存在一个实例时，可以使用此模式。
 
-IntentFilter匹配规则:
+特点：只要Activity实例在栈中存在，那么多次启动此Activity都不会重新创建此Activity的实例，而是将已存在的Activity实例移到栈顶，并调用它的onNewIntent()方法。
+
+示例：在应用中，通常会有一个主界面（如MainActivity），用户可以通过主界面进入其他功能页面。为了保持主界面的唯一性，并避免在主界面和其他页面之间频繁切换时重复创建主界面实例，可以将主界面Activity设置为singleTask模式。
+
+- singleInstance模式
+
+使用场景：当希望某个Activity作为单独的任务存在，并且只在整个系统中存在一个实例时，可以使用此模式。
+
+特点：除了具有singleTask模式的特性外，还具有更严格的限制。具有此启动模式的Activity只能单独存在于一个任务栈中，其他任务栈中的Activity不能与其位于同一个任务栈中。
+
+示例：在一些需要全局唯一性的场景中，如音乐播放器或来电界面，可以使用singleInstance模式来确保这些Activity在整个系统中只有一个实例存在。
+
+## Q12：描述一个场景，在这个场景中你可能需要使用到FLAG_ACTIVITY_CLEAR_TOP和FLAG_ACTIVITY_SINGLE_TOP这两个标志
+
+- 场景：在一个Android应用中，用户从侧边栏或菜单中选择一个功能项，打开对应的Activity，并且希望按返回键时能够回到主界面而不是菜单或侧边栏Activity。
+
+- 使用场景描述
+
+假设我们有一个Android应用，其主界面为Activity A，侧边栏或菜单中包含了多个功能项，每个功能项对应一个Activity（例如Activity B、Activity C等）。用户从侧边栏或菜单中选择一个功能项，点击后启动Activity B。用户在Activity B中完成操作后，如果直接按返回键，用户会先返回到之前的菜单或侧边栏Activity，而不是直接回到主界面。为了改善用户体验，我们希望用户能够直接返回到主界面。为此，我们可以给Activity A设置FLAG_ACTIVITY_CLEAR_TOP标志，这样返回时如果Activity A（主界面）已经在任务栈中存在，那么Activity A之上的所有Activity实例（包括Activity B）都会被销毁。然后，Activity A会被置于栈顶，用户按返回键时就会直接退出应用，而不是返回到之前的菜单或侧边栏Activity。
+
+如果Activity A被设置为singleTop启动模式，并且它已经在栈顶时，再次启动Activity A不会创建新的Activity A实例，而是会复用现有的实例。
+这可以避免不必要的Activity创建和销毁，提高应用的性能和用户体验。
+
+- 总结
+在这个场景中，FLAG_ACTIVITY_CLEAR_TOP用于确保用户能够直接返回到主界面而不是经过中间的Activity，而FLAG_ACTIVITY_SINGLE_TOP（如果适用）则用于优化主界面的启动行为。这两个标志的结合使用可以为用户提供更加流畅和直观的应用导航体验。
+
+## Q13：简述Intent在Android中的作用及其分类
+
+- 作用
+
+1. 启动活动（Activity）：Intent可以指定要启动的目标Activity，并携带额外的数据。
+
+2. 启动服务（Service）：通过Intent，可以在后台启动Service以执行长时间运行的操作。
+
+3. 发送广播（Broadcast）：Intent还可以用于发送广播，通知其他应用或应用内的组件有特定的事件发生。
+
+- 分类
+
+显式Intent：直接指定了要启动的组件名称（如Activity、Service等），主要用于应用内部组件的启动。
+
+隐式Intent：不直接指定组件名称，而是设置Action、Data、Category，让系统来筛选出合适的Activity。主要用于启动其他应用的组件或进行某些动作。
+
+## Q14：请描述Intent中能够携带的数据类型
+
+1. 基本数据类型及其包装类：如int、String等。
+
+2. Serializable对象：实现了Serializable接口的Java对象可以通过Intent传递。
+
+3. Parcelable对象：实现了Parcelable接口的Java对象也是Intent可以携带的数据类型。相比于Serializable，Parcelable更加高效，常用于进程间通信（IPC）。
+
+4. Bundle：一个可以携带多个键值对的容器，可以包含以上所有类型的数据。
+
+## Q15：请解释Intent Filter在Android中的作用。
+
+Intent Filter在Android中用于描述一个组件（如Activity、Service、BroadcastReceiver）能够响应哪些类型的隐式Intent。它定义了组件能够处理的动作（action）、数据（data）、类别（category）等。当系统接收到一个隐式Intent时，会查找所有注册了该Intent Filter的组件，并将Intent发送给能够响应的组件。
+
+例如，一个浏览器应用可能会在其Activity的Manifest中定义一个Intent Filter，用于捕获处理HTTP或HTTPS链接的隐式Intent，从而在用户点击链接时启动浏览器应用。
+
+## Q16：请简述IntentFilter的匹配规则
 
 IntentFilter主要包括：action、category、data。只有Intent完全匹配三者，才能成功启动Activity。一个Activity可以拥有多个IntentFilter，一个Intent只要能匹配其中一个，就能成功启动Activity。
 
@@ -142,55 +219,19 @@ action根据name属性值进行匹配。Intent的action需要与name的值完全
 （2）category匹配规则
 
 category根据name属性值进行匹配。Intent要么不携带category参数，直接默认匹配。要么携带的category每一个都必须在IntentFilter中的category能匹配到。
-Intent不携带category也能匹配成功是因为: 调用startActivity和startActivityForResult时，系统会默认为Intent添加<category android:name="android.intent.category.DEFAULT" />category。所以想要Activity能接受隐式调用，就必须给Activity指定<category android:name="android.intent.category.DEFAULT" />这个category。
+Intent不携带category也能匹配成功是因为: 调用startActivity和startActivityForResult时，系统会默认为Intent添加<category android:name="android.intent.category.DEFAULT" />category。因此IntentFilter中也通常需要包含这个默认的category。
 
 （3）data匹配规则
 
 data的匹配和action类似，也是只要Intent的data能匹配多个data中的一个就匹配成功。data由两部分组成：mimeType和URI。
 
-# 4.启动Activity的方式
+（4）优先级
 
-- 显式：
+如果存在多个IntentFilter都满足匹配条件，系统会根据在<intent-filter>标签中定义的优先级标签（<priority>）来对IntentFilter进行排序。优先级最高的IntentFilter将被选择来处理该Intent。
 
-```java
-// 1. 使用构造函数 传入Class对象
-Intent intent = new Intent(this, SecondActivity.class); 
-startActivity(intent);
+## Q17：Activity启动过程
 
-// 2. 使用 setClassName()传入包名+类名/包Context+类名
-Intent intent = new Intent(); 
-// 方式1：包名+类名
-// 参数1 = 包名称
-// 参数2 = 要启动的类的全限定名称 
-intent.setClassName("com.hc.hctest", "com.hc.hctest.SecondActivity"); 
+## Q18：请解释什么是Activity的透明主题（transparent theme），并给出一个应用场景。
 
-// 方式2：包Context+类名
-// 参数1 = 包Context，可直接传入Activity
-// 参数2 = 要启动的类的全限定名称 
-intent.setClassName(this, "com.hc.hctest.SecondActivity"); 
-
-startActivity(intent);
-
-// 3. 通过ComponentName（）传入 包名 & 类全名
-Intent intent = new Intent(); 
-// 参数1 = 包名称
-// 参数2 = 要启动的类的全限定名称 
-ComponentName cn = new ComponentName("com.hc.hctest", "com.hc.hctest.SecondActivity"); 
-intent.setComponent(cn); 
-startActivity(intent);
-```
-
-- 隐式：
-
-```java
-// 通过Category、Action设置
-Intent intent = new Intent(); 
-intent.addCategory(Intent.CATEGORY_DEFAULT); 
-intent.addCategory("com.hc.second"); 
-intent.setAction("com.hc.action"); 
-startActivity(intent);
-```
-
-# 5.Activity启动过程
-
+这些问题涵盖了Activity的生命周期、启动模式、状态保存与恢复、栈管理、返回栈行为以及Activity的透明主题等多个方面，可以帮助面试官了解你对Android Activity的掌握程度。
 
