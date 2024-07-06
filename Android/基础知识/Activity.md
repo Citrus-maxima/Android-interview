@@ -22,7 +22,7 @@ onRestart：表示重新开始，Activity在这时可见，当用户按Home键�
 
 （2）执行次数的区别。onCreate方法只在Activity创建时执行一次，而onStart方法在Activity的切换以及按Home键返回桌面再切回应用的过程中被多次调用。因此Bundle数据的恢复在onStart中进行比onCreate中执行更合适。
 
-（3）onCreate能做的事onStart其实都能做，但是onstart能做的事onCreate却未必适合做。如setContentView和资源初始化在两者都能做，然而想动画的初始化在onStart中做比较好。
+（3）onCreate能做的事onStart其实都能做，但是onstart能做的事onCreate却未必适合做。如setContentView和资源初始化在两者都能做，然而像动画的初始化在onStart中做比较好。
 
 ## Q2：onStart方法和onResume方法有什么区别？
 
