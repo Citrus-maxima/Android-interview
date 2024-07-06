@@ -48,17 +48,19 @@ onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通
 
 如竖屏切换到横屏，由于系统配置发生了改变，在默认情况下，Activity就会被销毁并重新创建。A销毁后立刻创建B，A中的一些信息会在B中恢复。
 
-（1）调用onSaveInstance保存当前Activity状态。注意，它与onPause方法没有先后之分。
+（1）调用onPause方法确保未保存的状态得到存储，以及释放那些不再需要的资源。
 
-（2）调用onStop方法做后续处理。
+（2）调用onSaveInstance保存当前Activity状态。
 
-（3）调用onDestroy方法销毁当前活动。
+（3）调用onStop方法做后续处理。
 
-（4）重新onCreate该活动。
+（4）调用onDestroy方法销毁当前活动。
 
-（5）调用onStart方法之后，再调用onRestoreInstance方法加载保存的数据。
+（5）重新onCreate该活动。
 
-（6）接下来就与正常的一样了，调用onResume，然后运行。
+（6）调用onStart方法之后，再调用onRestoreInstance方法加载保存的数据。
+
+（7）接下来就与正常的一样了，调用onResume，然后运行。
 
 ## Q7：在Android开发中，你如何确保Activity在横竖屏切换时不重新创建？
 
