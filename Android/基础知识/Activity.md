@@ -50,7 +50,7 @@ onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通
 
 （1）调用onPause方法确保未保存的状态得到存储，以及释放那些不再需要的资源。
 
-（2）调用onSaveInstance保存当前Activity状态。
+（2）调用onSaveInstanceState保存当前Activity状态。
 
 （3）调用onStop方法做后续处理。
 
@@ -58,7 +58,7 @@ onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通
 
 （5）重新onCreate该活动。
 
-（6）调用onStart方法之后，再调用onRestoreInstance方法加载保存的数据。
+（6）调用onStart方法之后，再调用onRestoreInstanceState方法加载保存的数据。
 
 （7）接下来就与正常的一样了，调用onResume，然后运行。
 
@@ -102,7 +102,7 @@ onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通
 
    onStart()中执行：onCreate() -> onStart() -> onStop() -> onDestroy()
 
-   onResume()中执行：onCreate() -> onStart() —> onResume() -> onPause() -> onStop() -> onDestroy()
+   onResume()中执行：onCreate() -> onStart() -> onResume() -> onPause() -> onStop() -> onDestroy()
 
 4. 物理返回键onKeyDown()：
 
@@ -112,11 +112,7 @@ onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通
 
    onPause() -> onStop() -> onRestart() -> onStart() -> onResume()
 
-6. 启动一个在前台的启动模式为singleTop的Activity：
-
-   onPause() -> onNewIntent() -> onResume()
-
-7. 在当前Activity界面进入设置界面更改了一些已有的设置，或者Activity发生异常崩溃重建：
+6. 在当前Activity界面进入设置界面更改了一些已有的设置，或者Activity发生异常崩溃重建：
 
    onPause() -> onStop() -> onDestroy() -> onCreate() -> onStart() -> onResume()
 
@@ -146,7 +142,7 @@ onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通
 
 特点：如果新的Activity已经位于任务栈的栈顶，那么此Activity不会重新创建实例，而是复用栈顶的Activity实例，同时会调用它的onNewIntent()方法。
 
-示例：假设有一个聊天应用，用户与不同联系人进行聊天，每次点击联系人都会打开相应的聊天界面（即ChatActivity）。如果ChatActivity已经在栈顶，并且用户再次点击同一个联系人，此时可以复用栈顶的ChatActivity实例，避免重复创建。
+示例：通知栏弹出Notification，点击Notification跳转到指定Activity，但是如果我现在页面就停留在那个指定的Activity，就不会再次打开我当前的Activity。
 
 - singleTask模式
 
@@ -204,7 +200,7 @@ onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通
 
 4. Bundle：一个可以携带多个键值对的容器，可以包含以上所有类型的数据。
 
-## Q15：请解释Intent Filter在Android中的作用。
+## Q15：请解释Intent Filter在Android中的作用
 
 Intent Filter在Android中用于描述一个组件（如Activity、Service、BroadcastReceiver）能够响应哪些类型的隐式Intent。它定义了组件能够处理的动作（action）、数据（data）、类别（category）等。当系统接收到一个隐式Intent时，会查找所有注册了该Intent Filter的组件，并将Intent发送给能够响应的组件。
 
@@ -216,12 +212,12 @@ IntentFilter主要包括：action、category、data。只有Intent完全匹配�
 
 （1）action匹配规则
 
-action根据name属性值进行匹配。Intent的action需要与name的值完全一样，才算匹配成功。一个IntentFilter可以有多个action, Intent的action只要和其中一个action匹配成功就可以。一个Intent如果没有指定action,那么匹配失败。
+action根据name属性值进行匹配。Intent的action需要与name的值完全一样，才算匹配成功。一个IntentFilter可以有多个action, Intent的action只要和其中一个action匹配成功就可以。一个Intent如果没有指定action，那么匹配失败。
 
 （2）category匹配规则
 
 category根据name属性值进行匹配。Intent要么不携带category参数，直接默认匹配。要么携带的category每一个都必须在IntentFilter中的category能匹配到。
-Intent不携带category也能匹配成功是因为: 调用startActivity和startActivityForResult时，系统会默认为Intent添加<category android:name="android.intent.category.DEFAULT" />category。因此IntentFilter中也通常需要包含这个默认的category。
+Intent不携带category也能匹配成功是因为: 调用startActivity和startActivityForResult时，系统会默认为Intent添加\<category android:name="android.intent.category.DEFAULT" />category。因此IntentFilter中也通常需要包含这个默认的category。
 
 （3）data匹配规则
 
@@ -229,11 +225,22 @@ data的匹配和action类似，也是只要Intent的data能匹配多个data中�
 
 （4）优先级
 
-如果存在多个IntentFilter都满足匹配条件，系统会根据在<intent-filter>标签中定义的优先级标签（<priority>）来对IntentFilter进行排序。优先级最高的IntentFilter将被选择来处理该Intent。
+如果存在多个IntentFilter都满足匹配条件，系统会根据在\<intent-filter>标签中定义的优先级标签（\<priority>）来对IntentFilter进行排序。优先级最高的IntentFilter将被选择来处理该Intent。
 
 ## Q17：Activity启动过程
 
+应用程序调用startActivity()方法，传入一个Intent，表示要启动的Activity。AMS接收到启动Activity的请求后，会检查Activity所属的应用程序是否已经启动。如果没有启动，AMS会通知Zygote进程启动一个新的应用进程来承载该Activity。
+
+AMS会通过Binder机制向目标应用进程中的ActivityThread发送启动Activity的命令。ActivityThread是应用进程中的主线程，它接收到AMS的启动命令后，会在主线程中创建Activity实例。
+ 
+ActivityThread会调用Instrumentation类的callActivityOnCreate()方法，最终触发Activity的生命周期方法，如onCreate()。
+
 ## Q18：请解释什么是Activity的透明主题（transparent theme），并给出一个应用场景。
 
-这些问题涵盖了Activity的生命周期、启动模式、状态保存与恢复、栈管理、返回栈行为以及Activity的透明主题等多个方面，可以帮助面试官了解你对Android Activity的掌握程度。
+透明主题（Transparent Theme）是一种特殊的主题，它使得Activity的背景完全透明。使用透明主题的Activity会让用户看到它背后的Activity或应用程序主屏幕。应用场景：
 
+ 1. 创建覆盖层：例如，在拍照应用中，可以使用透明Activity显示拍摄按钮和一些控制元素，而摄像头的预览内容仍然在背景中显示。
+    
+ 2. 临时显示UI元素：例如，在地图应用中，可以使用透明Activity显示一些临时的标记或工具提示，同时让用户继续查看地图。
+    
+ 3. 引导页面：在引导用户使用应用的过程中，可以使用透明Activity显示一些引导信息或动画，而不影响用户对应用界面的操作。
