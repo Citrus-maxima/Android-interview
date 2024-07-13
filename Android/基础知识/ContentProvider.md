@@ -83,9 +83,27 @@ ContentProvider的onCreate()是运行在UI线程的，而query()、insert()、de
 </provider>
 ```
 
-## Q8：ContentProvider是如何在不同应用程序之间传输数据的？
+## Q8：ContentProvider的数据传输过程
 
-一个应用进程有16个Binder线程去和远程服务进行交互，而每个线程可占用的缓存空间是128KB，超过会报异常。ContentResolver虽然是通过Binder进程间通信机制打通了应用程序之间共享数据的通道，但ContentProvider组件在不同应用程序之间传输数据是基于匿名共享内存机制来实现的。
+1.	客户端请求：
+
+当一个应用程序需要访问另一个应用程序的数据时，它会构造一个URI，并调用相应的ContentResolver方法（例如query、insert、update、delete）来发起请求。
+
+2.	ContentResolver：
+
+ContentResolver是应用程序访问ContentProvider的入口点。它会解析请求的URI，确定应该访问哪个ContentProvider。
+
+3.	URI匹配：
+
+ContentProvider在接收到请求时，会使用UriMatcher类来匹配传入的URI，以确定要操作的数据类型和具体的数据项。
+
+4.	数据操作：
+
+ContentProvider根据匹配结果，调用相应的方法来执行数据操作（例如查询数据库、插入新记录、更新现有记录或删除记录）。
+
+5.	结果返回：
+
+ContentProvider将操作结果（例如查询结果的Cursor对象或操作成功的状态）返回给ContentResolver，ContentResolver再将结果返回给最初发起请求的应用程序。
 
 ## Q9：Android的数据存储方式
 
