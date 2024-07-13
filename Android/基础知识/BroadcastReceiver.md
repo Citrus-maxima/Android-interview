@@ -77,3 +77,54 @@ android.intent.action.BOOT_COMPLETED：系统启动完成广播
 LocalBroadcastManager内部维护了mReceivers和mActions两个HashMap。mReceivers 是接收器和IntentFilter的对应表，主要作用是方便在unregisterReceiver(…)取消注册，同时作为对象锁限制注册接收器、发送广播、取消接收器注册等几个过程的并发访问。mActions以Action为key，注册这个Action的BroadcastReceiver链表为value。mActions的主要作用是方便在广播发送后快速得到可以接收它的BroadcastReceiver。在注册广播时，其实是在更新这两个Map。
 
 发送广播时，根据Action从mActions中取出ReceiverRecord列表，找出action匹配的广播，然后通过Handler发送消息，在Handler的handleMessage中，取出匹配的广播列表，依次回调onReceive方法。
+
+## Q6：全局广播内部的数据结构
+
+1. RegisteredReceivers：
+
+这是一个维护已注册的广播接收器的信息的结构。在Android源码中，这通常是一个由广播接收器（BroadcastReceiver）和相应的过滤器（IntentFilter）组成的集合。每当应用程序注册一个广播接收器时，系统会将这个接收器及其过滤器添加到这个集合中。
+
+2. BroadcastQueue：
+
+这是一个管理广播消息队列的结构。系统维护了多个广播队列（通常是前台广播队列和后台广播队列），以区分不同优先级的广播消息。每个队列中包含待处理的广播消息，这些消息会按照一定的顺序（通常是FIFO，即先进先出）被处理和分发。
+
+3. ReceiverList：
+
+这是一个用于存储特定广播接收器列表的结构。当系统接收到一个广播消息时，会根据广播消息的Intent及其过滤器，匹配相应的广播接收器，并将它们放入这个列表中以便进一步处理。
+
+4. IntentResolver：
+
+这是一个用于匹配广播接收器的结构。每当有广播消息发送时，系统会通过IntentResolver根据Intent过滤器查找与之匹配的广播接收器。
+
+当一个广播消息被发送时，系统会经历以下主要步骤：
+
+1. Intent匹配：
+
+系统会使用IntentResolver根据广播消息的Intent查找所有与之匹配的广播接收器。
+
+2. 消息队列：
+
+系统会将广播消息添加到相应的BroadcastQueue中。
+
+3. 分发广播：
+
+系统会从BroadcastQueue中取出广播消息，并通过ReceiverList获取相应的广播接收器，逐个调用它们的onReceive方法进行处理。
+
+数据结构概述
+
+RegisteredReceivers
+├── BroadcastReceiver1
+│   └── IntentFilter1
+├── BroadcastReceiver2
+│   └── IntentFilter2
+└── ...
+
+BroadcastQueue
+├── BroadcastMessage1
+├── BroadcastMessage2
+└── ...
+
+ReceiverList
+├── BroadcastReceiver1
+├── BroadcastReceiver2
+└── ...
