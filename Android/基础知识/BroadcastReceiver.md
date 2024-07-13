@@ -109,22 +109,3 @@ LocalBroadcastManager内部维护了mReceivers和mActions两个HashMap。mReceiv
 3. 分发广播：
 
 系统会从BroadcastQueue中取出广播消息，并通过ReceiverList获取相应的广播接收器，逐个调用它们的onReceive方法进行处理。
-
-数据结构概述
-
-RegisteredReceivers
-├── BroadcastReceiver1
-│   └── IntentFilter1
-├── BroadcastReceiver2
-│   └── IntentFilter2
-└── ...
-
-BroadcastQueue
-├── BroadcastMessage1
-├── BroadcastMessage2
-└── ...
-
-ReceiverList
-├── BroadcastReceiver1
-├── BroadcastReceiver2
-└── ...
