@@ -12,7 +12,7 @@
 
 - 普通广播
 
-  开发者自身定义intent的广播（最常用）。通过SendBroadcast()方法发送。
+  开发者自身定义Intent的广播（最常用）。通过sendBroadcast()方法发送。
 
 - 系统广播
 
@@ -32,7 +32,7 @@
 
 - 粘性广播
 
-  通过sendStickyBroadcast()方法发送，需要android.Manifest.permission.BROADCAST_STICKT权限。
+  通过sendStickyBroadcast()方法发送，需要android.Manifest.permission.BROADCAST_STICKY权限。
 
   粘性广播是指在广播发送之后，即使没有注册接收器，也可以在注册接收器后接收到该广播。也就是说，粘性广播可以在发送之后被缓存，并在注册接收器后立即发送给接收器。粘性广播一般用来确保重要的状态改变后的信息被持久保存，并且能随时广播给新的广播接收器，比如电源的改变。
 
