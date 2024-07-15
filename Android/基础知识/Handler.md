@@ -284,33 +284,13 @@ Handler的Callback具有次高的优先级，可以在Callback的handleMessage�
 
 然而，为了提高性能和减少内存分配，Android的Handler机制支持Message的复用。当一个Message被处理完成后，它并不会立即被销毁，而是会被放回到一个消息池中，等待下一次被复用。这样，在下一次需要发送Message时，就可以从消息池中获取一个已经存在的Message对象，而不是重新创建一个新的对象。这种方式可以有效地减少内存分配和垃圾回收的开销，提高应用的性能。虽然Message可以被复用，但是每次复用前都需要确保Message的状态已经被正确地重置。这通常是通过调用Message的clear()或recycle()方法来实现的。这些方法会将Message的内部状态重置为初始值，以便它可以被安全地重新使用。
 
-## Q25：Handler内存泄露
-
-Handler内存泄露的原因通常与Handler如何持有和使用Context（如Activity）的引用有关。
-
-原因：
-
-（1）Handler持有Activity的引用：当Handler作为Activity的非静态内部类时，它会默认持有Activity的引用。如果Handler被声明为静态的或者在一个长生命周期的对象（如单例、静态变量、线程等）中持有，那么在Activity销毁后，由于Handler仍然持有Activity的引用，这将阻止Activity被垃圾回收器回收，从而导致内存泄露。
-
-（2）MessageQueue中的消息：当Activity销毁时，如果Handler中还有未处理的消息在MessageQueue中等待处理，这些消息会持有Handler的引用，进而持有Activity的引用，导致Activity无法被回收。
-
-解决方案：
-
-（1）使Handler成为静态的：通过将Handler声明为静态的，可以确保Handler的生命周期不依赖于Activity。但是，这样做需要手动管理对Activity的引用，避免潜在的空指针异常。
-
-（2）在Activity销毁时移除消息和回调：在Activity的onDestroy()方法中，确保移除所有与Handler相关的回调和消息。这可以通过调用Handler的removeCallbacks()和removeMessages()方法实现。
-
-（3）使用WeakReference：可以使用WeakReference来持有Activity的引用，这样当Activity不再需要时，它可以被垃圾回收器回收。但是，使用WeakReference需要谨慎处理，因为当引用变为null时，需要确保不会再次使用它。
-
-总之，为了避免Handler导致的内存泄露，需要仔细管理Handler和Activity之间的引用关系，并确保在适当的时机释放这些引用。
-
-## Q26：removeMessages为什么需要两次循环？
+## Q25：removeMessages为什么需要两次循环？
 
 第一次循环是先判断符合删除条件的Message是不是从消息队列的头部就开始有了，这时候会涉及修改mMessage指向的问题，而mMessage代表的就是整个消息队列。
 
 在排除了第一种情况之后，第二次循环不需要关心mMessage指向的问题，只要继续遍历队列删除剩余的符合删除条件的Message。
 
-## Q27：Handler的runWithScissors()可实现A线程阻塞等待B线程处理完消息后再继续执行的功能，它为什么被标记为hide？存在什么问题？原因是什么？
+## Q26：Handler的runWithScissors()可实现A线程阻塞等待B线程处理完消息后再继续执行的功能，它为什么被标记为hide？存在什么问题？原因是什么？
 
 Handler的runWithScissors()方法被标记为@hide，意味着它是Android框架内部使用的一个方法，并不打算直接暴露给普通的开发者使用。这个方法的设计目的是实现在一个线程（A线程）中通过Handler向另一个线程（B线程）发送一个任务，并阻塞等待B线程处理完该任务后再继续执行。
 
@@ -326,6 +306,6 @@ Handler的runWithScissors()方法被标记为@hide，意味着它是Android框�
 
 综上所述，虽然runWithScissors()方法在某些情况下可能很有用，但由于其存在的潜在问题和隐患，Android工程师选择将其标记为@hide，以限制普通开发者的使用。如果开发者需要在Android中实现线程间的通信和同步，建议使用其他更可靠和可预测的方法，如使用Handler和Looper来发送和处理消息，或者使用并发工具类（如ExecutorService）来管理线程池和任务执行。
 
-## Q28：Handler可以IPC通信吗？
+## Q27：Handler可以IPC通信吗？
 
 不能，Handler只能用于共享内存地址的两个线程通信，即同进程的两个线程通信。
