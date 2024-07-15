@@ -36,8 +36,6 @@ View的绘制过程可以分为三个阶段：measure（测量）、layout（布
 
 7. 在Activity或Fragment中使用自定义View
 
-如果你的自定义View需要处理触摸事件或其他用户交互，你可以重写onTouchEvent或其他相关方法。
-
 ## Q3：View的事件分发机制
 
 1. 事件的产生与封装
