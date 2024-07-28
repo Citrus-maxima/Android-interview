@@ -82,7 +82,7 @@ IntentService是一种特殊的Service，它继承了Service并且它是一个�
 
 在实现上，IntentService封装了HandlerThread和Handler。当IntentService被第一次启动时，它的onCreate()方法会被调用，onCreate()方法会创建一个HandlerThread，然后使用它的Looper来构造一个Handler对象mServiceHandler，这样通过mServiceHandler发送的消息最终都会在HandlerThread中执行。
 
-生成一个默认的且与主线程互相独立的工作者线程来执行所有传送至onStartCommand()方法的Intetnt。
+生成一个默认的且与主线程互相独立的工作者线程来执行所有传送至onStartCommand()方法的Intent。
 
 生成一个工作队列来传送Intent对象给onHandleIntent()方法，同一时刻只传送一个Intent对象，这样一来，就不必担心多线程的问题。在所有的请求(Intent)都被执行完以后会自动停止服务，所以，不需要自己去调用stopSelf()方法来停止。
 
