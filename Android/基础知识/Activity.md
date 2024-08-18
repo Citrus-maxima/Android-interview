@@ -36,7 +36,7 @@ onRestart：表示重新开始，Activity在这时可见，当用户按Home键�
 
 ## Q4：onStop方法和onDestroy方法有什么区别？
 
-onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通过切换Activity再次回到该Activity，而onDestroy阶段Acivity被销毁。
+onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通过切换Activity再次回到该Activity，而onDestroy阶段Activity被销毁。
 
 ## Q5：为什么切换Activity时各方法的执行次序是(A)onPause→(B)onCreate→(B)onStart→(B)onResume→(A)onStop而不是(A)onPause→(A)onStop→(B)onCreate→(B)onStart→(B)onResume
 
@@ -90,7 +90,7 @@ onStop阶段Activity还没有被销毁，对象还在内存中，此时可以通
 
 1. Activity A中启动Activity B：
 
-   A: opPause() -> B: onCreate() -> B: onStart() -> B: onResume() -> A: onStop()
+   A: onPause() -> B: onCreate() -> B: onStart() -> B: onResume() -> A: onStop()
 
 2. home键：
 
